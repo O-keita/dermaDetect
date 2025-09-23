@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DermaDetect - AI Skin Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --dark-blue: #00008c;
+            --light-blue: #4467c4;
+            --gradient-bg: linear-gradient(135deg, #000066 0%, #000044 50%, #0a0a1a 100%);
+        }
+        
+        body {
+            background: var(--gradient-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .glass-card {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 140, 0.3);
+        }
+        
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(68, 103, 196, 0.5);
+        }
+        
+        .upload-zone {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone:hover {
+            border-color: var(--light-blue);
+            background: rgba(68, 103, 196, 0.1);
+        }
+        
+        .upload-zone.dragover {
+            border-color: var(--light-blue);
+            background: rgba(68, 103, 196, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .result-card {
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+        
+        .result-card.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .severity-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid var(--light-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .floating-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(68, 103, 196, 0.6);
+            border-radius: 50%;
+            animation: float 6s infinite linear;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white overflow-x-hidden">
+    <!-- Floating Particles Background -->
+    <div class="floating-particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 1s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 3s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 5s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 0.5s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 1.5s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 2.5s;"></div>
+    </div>
+
+    <!-- Modified container to use full width with creative grid layout -->
+    <div class="w-full px-4 py-6 relative z-10">
+        <!-- Header positioned at top left -->
+        <div class="mb-8 max-w-sm">
+            <div class="glass-card rounded-3xl p-6">
+                <div class="flex items-center justify-start mb-4">
+                    <div class="w-12 h-12 rounded-full  bg-white flex items-center justify-center glow-effect mr-4">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="DermaDetect Logo">
+
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">DermaDetect</h1>
+                        <p class="text-blue-200 text-sm">AI-Powered Skin Analysis</p>
+                        <div class="text-xs text-blue-300">Powered by HexAI</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content area using creative asymmetric layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto">
+            <!-- Upload Section - spans left side on desktop -->
+            <div class="lg:col-span-5 xl:col-span-4">
+                <div class="glass-card rounded-3xl p-6 h-fit">
+                    <h2 class="text-lg font-semibold mb-4">Upload Skin Image</h2>
+                    
+                    <div id="uploadZone" class="upload-zone rounded-2xl p-8 text-center cursor-pointer">
+                        <div id="uploadContent">
+                            <svg class="w-12 h-12 mx-auto mb-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <p class="text-white mb-2">Tap to upload or drag image here</p>
+                            <p class="text-blue-300 text-sm">Supports JPG, PNG formats</p>
+                        </div>
+                        
+                        <div id="loadingContent" class="hidden">
+                            <div class="loading-spinner mx-auto mb-4"></div>
+                            <p class="text-white">Analyzing image...</p>
+                            <p class="text-blue-300 text-sm">Please wait while our AI processes your image</p>
+                        </div>
+                    </div>
+                    
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
+                    
+                    <div id="imagePreview" class="hidden mt-4">
+                        <img id="previewImg" class="w-full h-48 object-cover rounded-2xl">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section - spans right side on desktop -->
+            <div class="lg:col-span-7 xl:col-span-8">
+                <div id="resultsSection" class="hidden">
+                    <div class="glass-card rounded-3xl p-6 result-card">
+                        <h2 class="text-lg font-semibold mb-4">Analysis Results</h2>
+                        
+                        <div id="resultContent" class="space-y-4">
+                            <!-- Results will be populated here -->
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-white/20">
+                            <p class="text-xs text-blue-300 text-center">
+                                This is an AI analysis tool. Please consult a healthcare professional for medical advice.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons positioned in right column -->
+                <div id="actionButtons" class="hidden mt-6">
+                    <button id="newAnalysisBtn" class="w-full glass-card rounded-2xl p-4 text-white font-medium hover:bg-white/20 transition-all duration-300">
+                        <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        New Analysis
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Severity configurations
+        const severityConfig = {
+            'severe': {
+                color: '#ef4444',
+                label: 'Very Serious',
+                description: 'Requires immediate medical attention',
+                icon: '🚨'
+            },
+            'needs_attention': {
+                color: '#f59e0b',
+                label: 'Needs Attention',
+                description: 'Should be examined by a healthcare professional',
+                icon: '⚠️'
+            },
+            'not_serious': {
+                color: '#10b981',
+                label: 'Not Serious',
+                description: 'Low risk, monitor for changes',
+                icon: '✅'
+            }
+        };
+
+        // DOM elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadContent = document.getElementById('uploadContent');
+        const loadingContent = document.getElementById('loadingContent');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultContent = document.getElementById('resultContent');
+        const actionButtons = document.getElementById('actionButtons');
+        const newAnalysisBtn = document.getElementById('newAnalysisBtn');
+
+        // Event listeners
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', handleDragOver);
+        uploadZone.addEventListener('dragleave', handleDragLeave);
+        uploadZone.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+        newAnalysisBtn.addEventListener('click', resetAnalysis);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function processFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            // Show loading state
+            uploadContent.classList.add('hidden');
+            loadingContent.classList.remove('hidden');
+
+            // Display image preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+
+            // Simulate API call
+            setTimeout(() => {
+                analyzeImage(file);
+            }, 3000);
+        }
+
+        async function analyzeImage(file) {
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                const response = await fetch('http://127.0.0.1:5600/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                alert('Analysis failed. Please check if the API server is running on port 5600.');
+                resetUploadState();
+            }
+        }
+
+        function getRecommendations(severity) {
+            const recommendations = {
+                'severe': [
+                    'Seek immediate medical attention',
+                    'Do not delay consultation',
+                    'Document any changes in symptoms'
+                ],
+                'needs_attention': [
+                    'Schedule appointment with dermatologist',
+                    'Monitor for changes',
+                    'Avoid scratching or irritating the area'
+                ],
+                'not_serious': [
+                    'Continue regular skin monitoring',
+                    'Maintain good skin hygiene',
+                    'Use sunscreen protection'
+                ]
+            };
+            return recommendations[severity] || [];
+        }
+
+        function displayResults(response) {
+            const config = severityConfig[response.predicted_class] || {
+                color: '#6b7280',
+                label: 'Unknown',
+                description: 'No information available',
+                icon: '❓'
+            };
+            
+            // Use severity config from API if available, otherwise use local config
+            const severityInfo = response.severity || config;
+            const recommendations = getRecommendations(response.predicted_class);
+            
+            resultContent.innerHTML = `
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" 
+                         style="background: ${severityInfo.color}20; border: 2px solid ${severityInfo.color};">
+                        <span class="text-2xl">${severityInfo.icon}</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2" style="color: ${severityInfo.color};">
+                        <span class="severity-indicator" style="background-color: ${severityInfo.color};"></span>
+                        ${severityInfo.label}
+                    </h3>
+                    <p class="text-blue-200 text-sm">${severityInfo.description}</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="glass-card rounded-2xl p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-blue-300">Confidence Level</span>
+                            <span class="font-semibold">${Math.round(response.confidence * 100)}%</span>
+                        </div>
+                        <div class="w-full bg-white/20 rounded-full h-2">
+                            <div class="h-2 rounded-full transition-all duration-1000" 
+                                 style="width: ${Math.round(response.confidence * 100)}%; background-color: ${severityInfo.color};"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-4">
+                        <h4 class="font-semibold mb-3 text-blue-100">Classification Probabilities</h4>
+                        <div class="space-y-2">
+                            ${Object.entries(response.probabilities).map(([className, probability]) => {
+                                const classConfig = severityConfig[className] || { color: '#6b7280', label: className };
+                                return `
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-blue-200 flex items-center">
+                                            <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${classConfig.color};"></span>
+                                            ${classConfig.label}
+                                        </span>
+                                        <span class="text-sm font-medium">${Math.round(probability * 100)}%</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-4">
+                        <h4 class="font-semibold mb-3 text-blue-100">Recommendations</h4>
+                        <ul class="space-y-2">
+                            ${recommendations.map(rec => `
+                                <li class="flex items-start">
+                                    <span class="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0" 
+                                          style="background-color: ${severityInfo.color};"></span>
+                                    <span class="text-sm text-blue-200">${rec}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center text-xs text-blue-400">
+                        Predicted Class: ${response.predicted_class} | Index: ${response.predicted_index}
+                    </div>
+                </div>
+            `;
+
+            // Show results with animation
+            resultsSection.classList.remove('hidden');
+            actionButtons.classList.remove('hidden');
+            
+            setTimeout(() => {
+                resultsSection.querySelector('.result-card').classList.add('show');
+            }, 100);
+
+            // Hide loading state
+            loadingContent.classList.add('hidden');
+            uploadContent.classList.remove('hidden');
+        }
+
+        function resetAnalysis() {
+            resultsSection.classList.add('hidden');
+            actionButtons.classList.add('hidden');
+            imagePreview.classList.add('hidden');
+            fileInput.value = '';
+            resultsSection.querySelector('.result-card').classList.remove('show');
+        }
+
+        function resetUploadState() {
+            loadingContent.classList.add('hidden');
+            uploadContent.classList.remove('hidden');
+        }
+
+        // Add some interactive particles on click
+        document.addEventListener('click', (e) => {
+            createClickEffect(e.clientX, e.clientY);
+        });
+
+        function createClickEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.style.position = 'fixed';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            effect.style.width = '6px';
+            effect.style.height = '6px';
+            effect.style.background = '#4467c4';
+            effect.style.borderRadius = '50%';
+            effect.style.pointerEvents = 'none';
+            effect.style.zIndex = '1000';
+            effect.style.animation = 'clickEffect 0.6s ease-out forwards';
+            
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                document.body.removeChild(effect);
+            }, 600);
+        }
+
+        // Add click effect animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes clickEffect {
+                0% {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+                100% {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
