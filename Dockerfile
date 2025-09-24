@@ -18,7 +18,7 @@ RUN mkdir /app/uploads
 # Set environment variables
 ENV FLASK_APP=app/main.py
 ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5600
+ENV FLASK_RUN_PORT=5000
 
 # Expose port
 EXPOSE 5000

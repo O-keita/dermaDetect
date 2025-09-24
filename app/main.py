@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, render_template, url_for
 #==============================
 #make sure utls can be imported
 sys.path.append("..") 
-from utils import load_image, extract_embedding
+from app.utils import load_image, extract_embedding
 #===============================
 
 
@@ -133,4 +133,4 @@ def predict():
 #=============================
 #run the flask app
 if __name__ == "__main__":
-    app.run(debug=True, port=5600)
+    app.run(host="0.0.0.0", port=5000)
