@@ -2,11 +2,15 @@ import os
 from PIL import Image
 import torch
 import numpy as np
+import os
 from transformers import AutoProcessor, AutoModel
+
+
+token = os.getenv("HF_TOKEN")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = AutoModel.from_pretrained("google/medsiglip-448").to(device)
-processor = AutoProcessor.from_pretrained("google/medsiglip-448")
+processor = AutoProcessor.from_pretrained("google/medsiglip-448", use_auth_token=token)
 
 def load_image(path, size=(448, 448)):
     img = Image.open(path).convert("RGB")
